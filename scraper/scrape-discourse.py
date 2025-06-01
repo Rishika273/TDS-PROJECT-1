@@ -41,5 +41,5 @@ def scrape_discourse_category(category_id=34, start_page=0, end_page=5):
     print("Scraping completed and saved to data/discourse.json")
 
 if __name__ == "__main__":
-    scrape_discourse_category(category_id=34, start_page=0, end_page=5)  # ✅ Adjust range for Jan–Apr coverage
-
+    scrape_discourse_category(category_id=34, start_page=0, end_page=5)  
+    
