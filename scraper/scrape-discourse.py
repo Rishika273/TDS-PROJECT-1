@@ -3,14 +3,19 @@ import json
 import os
 import time
 
-def scrape_discourse_category(category_id=34, start_page=0, end_page=5):
-    base_url = "https://discourse.onlinedegree.iitm.ac.in"
+HEADERS = {
+    "User-Agent": "Mozilla/5.0"
+}
+
+BASE_URL = "https://discourse.onlinedegree.iitm.ac.in"
+
+def get_topics_from_category(category_id, max_pages=5):
     all_topics = []
 
-    for page in range(start_page, end_page + 1):
-        print(f"Fetching topics from category page {page}...")
-        url = f"{base_url}/c/courses/tds-kb/{category_id}.json?page={page}"
-        response = requests.get(url)
+    for page in range(max_pages):
+        print(f"Fetching page {page}...")
+        url = f"{BASE_URL}/latest.json?category={category_id}&page={page}"
+        response = requests.get(url, headers=HEADERS)
 
         if response.status_code != 200:
             print(f"Failed to fetch page {page}. Status code: {response.status_code}")
@@ -18,28 +23,40 @@ def scrape_discourse_category(category_id=34, start_page=0, end_page=5):
 
         data = response.json()
         topics = data.get("topic_list", {}).get("topics", [])
+        all_topics.extend(topics)
 
-        for topic in topics:
-            topic_id = topic["id"]
-            topic_url = f"{base_url}/t/{topic_id}.json"
-            topic_response = requests.get(topic_url)
+        time.sleep(0.5)
 
-            if topic_response.status_code != 200:
-                print(f"Skipping topic {topic_id}. Failed to fetch.")
-                continue
+    return all_topics
 
-            topic_data = topic_response.json()
-            all_topics.append(topic_data)
 
-            # polite scraping delay
-            time.sleep(0.5)
+def fetch_full_posts(topic_ids):
+    full_posts = []
 
-    os.makedirs("data", exist_ok=True)
-    with open("data/discourse.json", "w", encoding="utf-8") as f:
-        json.dump(all_topics, f, indent=2)
+    for topic in topic_ids:
+        topic_id = topic['id']
+        topic_url = f"{BASE_URL}/t/{topic_id}.json"
+        response = requests.get(topic_url, headers=HEADERS)
 
-    print("Scraping completed and saved to data/discourse.json")
+        if response.status_code == 200:
+            full_posts.append(response.json())
+        else:
+            print(f"Failed to fetch topic {topic_id}")
+
+        time.sleep(0.5)
+
+    return full_posts
+
 
 if __name__ == "__main__":
-    scrape_discourse_category(category_id=34, start_page=0, end_page=5)  
-    
+    os.makedirs("data", exist_ok=True)
+
+    category_id = 34  # TDS Knowledge Base
+    topics = get_topics_from_category(category_id, max_pages=5)
+
+    full_data = fetch_full_posts(topics)
+
+    with open("data/discourse.json", "w", encoding="utf-8") as f:
+        json.dump(full_data, f, indent=2)
+
+    print("✅ Scraping completed and saved to data/discourse.json")
